@@ -1,0 +1,28 @@
+├── CollectionStructure/
+│   ├── __pycache__/
+│   │   └── Product.cpython-313.pyc (0.4 KB)
+│   ├── __init__.py (0.0 KB)
+│   └── Product.py (0.2 KB)
+├── CoreModules/
+│   ├── __pycache__/
+│   │   ├── Billing.cpython-313.pyc (0.6 KB)
+│   │   └── Inventory.cpython-313.pyc (1.3 KB)
+│   ├── __init__.py (0.0 KB)
+│   ├── Billing.py (0.3 KB)
+│   └── Inventory.py (0.9 KB)
+├── FileCRUDModules/
+│   ├── __init__.py (0.0 KB)
+│   ├── FileDelete.py (0.0 KB)
+│   ├── FileRead.py (0.0 KB)
+│   ├── FileUpdate.py (0.0 KB)
+│   └── FileWrite.py (0.4 KB)
+├── FileHelperModule/
+│   ├── __init__.py (0.0 KB)
+│   ├── FileExist.py (0.5 KB)
+│   └── GetSerialNumber.py (0.4 KB)
+├── InventoryFunctions/
+│   ├── __init__.py (0.0 KB)
+│   ├── NewItem.py (1.1 KB)
+│   └── PreviousItem.py (0.0 KB)
+├── main.c (20.0 KB)
+└── main.py (0.9 KB)

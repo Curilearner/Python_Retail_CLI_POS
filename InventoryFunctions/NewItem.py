@@ -1,4 +1,4 @@
-import CollectionStructure.Product as Product
+import CollectionStructure.Product as Product 
 from FileHelperModule.GetSerialNumber import GetSerialNumber
 import FileCRUDModules.FileWrite as FileWrite
 
@@ -26,3 +26,4 @@ def new_item():
         Product.Inventory.append((serial, product_name, price, quantity, quantitytype))
 
     FileWrite.FileWriter("inventory.txt", Product.Inventory)
+    

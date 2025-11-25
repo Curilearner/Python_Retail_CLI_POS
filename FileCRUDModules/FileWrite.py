@@ -2,7 +2,7 @@ def FileWriter(filename, latestinventory):
     try:
         with open(filename, 'w') as file: 
             for item in latestinventory:
-                file.write(f"{item.sn},{item.name},{item.price},{item.quantity}\n")
+                file.write(f"{item.sn},{item.name},{item.price},{item.quantity},{item.quantitytype}\n")
 
         return True
     except Exception as e:

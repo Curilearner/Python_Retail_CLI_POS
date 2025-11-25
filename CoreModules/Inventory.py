@@ -1,4 +1,6 @@
 import CollectionStructure.Product
+import InventoryFunctions.PrevItem import prev_item
+import InventoryFunctions.NewItem import new_item
 
 def Inventory():
     while True:
