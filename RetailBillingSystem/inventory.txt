@@ -1,0 +1,2 @@
+1	Drink_Frooti	20.00	1000.00
+2	Drink_Coke	50.00	70.00

@@ -1,1 +1,2 @@
-1	ChowChow-WaiWai	20.00	38.00
+1	ChowChow-WaiWai	20.00	28.00
+2	ChowChow_Waiwai	20.00	100.00
