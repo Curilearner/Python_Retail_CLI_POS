@@ -685,7 +685,7 @@ class SalesWindow:
         self.parent = parent
         self.window = tk.Toplevel(parent.root)
         self.window.title("Point of Sale")
-        self.window.geometry("1200x800")
+        self.window.geometry("1000x700")
         self.window.configure(bg=COLORS["bg"])
         self.window.resizable(True, True)
         
@@ -700,7 +700,7 @@ class SalesWindow:
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
         # Left side - Product selection
-        left_frame = tk.Frame(main_frame, bg=COLORS["bg"], width=600)
+        left_frame = tk.Frame(main_frame, bg=COLORS["bg"], width=400)
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
         
         # Product search
@@ -725,14 +725,12 @@ class SalesWindow:
                 fg=COLORS["text"], bg=COLORS["bg"]).pack(anchor=tk.W)
         
         # Create treeview for products
-        self.products_tree = ttk.Treeview(products_container, columns=("ID", "Name", "Price", "Stock"), 
+        self.products_tree = ttk.Treeview(products_container, columns=("Name", "Price", "Stock"), 
                                          show="headings", height=15)
-        self.products_tree.heading("ID", text="ID")
         self.products_tree.heading("Name", text="Product Name")
         self.products_tree.heading("Price", text="Price (₹)")
         self.products_tree.heading("Stock", text="In Stock")
         
-        self.products_tree.column("ID", width=80)
         self.products_tree.column("Name", width=200)
         self.products_tree.column("Price", width=100)
         self.products_tree.column("Stock", width=80)
@@ -740,8 +738,8 @@ class SalesWindow:
         self.products_tree.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
         self.products_tree.bind("<Double-1>", self.add_to_cart)
         
-        # Right side - Cart and billing
-        right_frame = tk.Frame(main_frame, bg=COLORS["bg"], width=500)
+        # Right side - Cart
+        right_frame = tk.Frame(main_frame, bg=COLORS["bg"], width=400)
         right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
         
         # Cart header
@@ -774,20 +772,10 @@ class SalesWindow:
         summary_frame = tk.Frame(right_frame, bg=COLORS["card"], pady=10)
         summary_frame.pack(fill=tk.X, pady=(10, 0))
         
-        self.subtotal_label = tk.Label(summary_frame, text="Subtotal: ₹0.00", 
-                                      font=("Arial", 14), 
-                                      fg=COLORS["text"], bg=COLORS["card"])
-        self.subtotal_label.pack(anchor=tk.W)
-        
-        self.tax_label = tk.Label(summary_frame, text="Tax (10%): ₹0.00", 
-                                 font=("Arial", 14), 
-                                 fg=COLORS["text"], bg=COLORS["card"])
-        self.tax_label.pack(anchor=tk.W)
-        
         self.total_label = tk.Label(summary_frame, text="Total: ₹0.00", 
                                    font=("Arial", 16, "bold"), 
-                                   fg=COLORS["success"], bg=COLORS["card"])
-        self.total_label.pack(anchor=tk.W)
+                                   fg=COLORS["text"], bg=COLORS["card"])
+        self.total_label.pack()
         
         # Cart actions
         actions_frame = tk.Frame(right_frame, bg=COLORS["bg"])
@@ -810,14 +798,14 @@ class SalesWindow:
         self.clear_btn.pack(side=tk.LEFT, padx=(0, 5))
         
         # Checkout button
-        self.checkout_btn = tk.Button(right_frame, text="Generate Bill", 
+        self.checkout_btn = tk.Button(right_frame, text="Process Payment", 
                                      font=("Arial", 14, "bold"), 
                                      bg=COLORS["success"], 
                                      fg=COLORS["text"],
                                      relief=tk.FLAT,
                                      bd=0,
                                      pady=12,
-                                     command=self.generate_bill)
+                                     command=self.process_payment)
         self.checkout_btn.pack(fill=tk.X, pady=(10, 0))
     
     def load_products(self):
@@ -828,7 +816,6 @@ class SalesWindow:
         # Add products to treeview
         for product_id, product in self.parent.products.items():
             self.products_tree.insert("", "end", values=(
-                product_id,
                 product["name"], 
                 f"₹{product['price']:.2f}", 
                 product["quantity"]
@@ -841,9 +828,8 @@ class SalesWindow:
             self.products_tree.delete(item)
         
         for product_id, product in self.parent.products.items():
-            if query in product["name"].lower() or query in str(product_id):
+            if query in product["name"].lower():
                 self.products_tree.insert("", "end", values=(
-                    product_id,
                     product["name"], 
                     f"₹{product['price']:.2f}", 
                     product["quantity"]
@@ -855,42 +841,36 @@ class SalesWindow:
             return
         
         item = self.products_tree.item(selected[0])
-        product_id = int(item["values"][0])
+        product_id = int(item["tags"][0])
         product = self.parent.products[product_id]
-        
-        # Ask for quantity
-        quantity = simpledialog.askfloat("Quantity", f"Enter quantity for {product['name']}:", 
-                                        initialvalue=1, minvalue=0.1)
-        if quantity is None or quantity <= 0:
-            return
-        
-        # Check stock
-        if product["quantity"] < quantity:
-            messagebox.showwarning("Warning", f"Not enough stock! Only {product['quantity']} available.")
-            return
         
         # Check if product already in cart
         for i, cart_item in enumerate(self.cart):
             if cart_item["id"] == product_id:
-                self.cart[i]["quantity"] += quantity
-                self.cart[i]["total"] = self.cart[i]["quantity"] * self.cart[i]["price"]
+                if cart_item["quantity"] < product["quantity"]:
+                    self.cart[i]["quantity"] += 1
+                    self.cart[i]["total"] = self.cart[i]["quantity"] * self.cart[i]["price"]
+                else:
+                    messagebox.showwarning("Warning", "Not enough stock available!")
                 self.update_cart_display()
                 return
         
         # Add new item to cart
-        self.cart.append({
-            "id": product_id,
-            "name": product["name"],
-            "price": product["price"],
-            "quantity": quantity,
-            "total": product["price"] * quantity
-        })
-        self.update_cart_display()
+        if product["quantity"] > 0:
+            self.cart.append({
+                "id": product_id,
+                "name": product["name"],
+                "price": product["price"],
+                "quantity": 1,
+                "total": product["price"]
+            })
+            self.update_cart_display()
+        else:
+            messagebox.showwarning("Warning", "Product out of stock!")
     
     def remove_from_cart(self):
         selected = self.cart_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select an item to remove")
             return
         
         item_index = self.cart_tree.index(selected[0])
@@ -898,9 +878,8 @@ class SalesWindow:
         self.update_cart_display()
     
     def clear_cart(self):
-        if self.cart and messagebox.askyesno("Confirm", "Clear all items from cart?"):
-            self.cart = []
-            self.update_cart_display()
+        self.cart = []
+        self.update_cart_display()
     
     def update_cart_display(self):
         # Clear cart display
@@ -908,152 +887,52 @@ class SalesWindow:
             self.cart_tree.delete(item)
         
         # Add cart items
-        subtotal = 0
+        total_amount = 0
         for item in self.cart:
             self.cart_tree.insert("", "end", values=(
                 item["name"],
-                f"{item['quantity']:.2f}",
+                item["quantity"],
                 f"₹{item['price']:.2f}",
                 f"₹{item['total']:.2f}"
             ))
-            subtotal += item["total"]
+            total_amount += item["total"]
         
-        tax = subtotal * 0.10  # 10% tax
-        total = subtotal + tax
-        
-        self.subtotal_label.config(text=f"Subtotal: ₹{subtotal:.2f}")
-        self.tax_label.config(text=f"Tax (10%): ₹{tax:.2f}")
-        self.total_label.config(text=f"Total: ₹{total:.2f}")
+        self.total_label.config(text=f"Total: ₹{total_amount:.2f}")
     
-    def generate_bill(self):
+    def process_payment(self):
         if not self.cart:
             messagebox.showwarning("Warning", "Cart is empty!")
             return
         
-        # Create bill window
-        bill_window = tk.Toplevel(self.window)
-        bill_window.title("Invoice")
-        bill_window.geometry("600x800")
-        bill_window.configure(bg=COLORS["bg"])
+        total_amount = sum(item["total"] for item in self.cart)
         
-        # Bill content
-        bill_frame = tk.Frame(bill_window, bg=COLORS["bg"], padx=20, pady=20)
-        bill_frame.pack(fill=tk.BOTH, expand=True)
+        # Create sale record
+        sale = {
+            "id": self.current_sale_id,
+            "date": datetime.now(),
+            "items": self.cart.copy(),
+            "total": total_amount
+        }
         
-        # Store header
-        header_frame = tk.Frame(bill_frame, bg=COLORS["card"], pady=20)
-        header_frame.pack(fill=tk.X)
-        
-        tk.Label(header_frame, text="ALINA RETAIL STORE", 
-                font=("Arial", 24, "bold"), fg=COLORS["primary"], bg=COLORS["card"]).pack()
-        tk.Label(header_frame, text="Auckland, NEW ZEALAND", 
-                font=("Arial", 14), fg=COLORS["text"], bg=COLORS["card"]).pack()
-        tk.Label(header_frame, text=f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 
-                font=("Arial", 12), fg=COLORS["muted"], bg=COLORS["card"]).pack()
-        
-        # Bill items
-        items_frame = tk.Frame(bill_frame, bg=COLORS["bg"])
-        items_frame.pack(fill=tk.BOTH, expand=True, pady=20)
-        
-        # Create treeview for bill items
-        bill_tree = ttk.Treeview(items_frame, columns=("Product", "Qty", "Price", "Total"), 
-                                show="headings", height=15)
-        bill_tree.heading("Product", text="Product")
-        bill_tree.heading("Qty", text="Qty")
-        bill_tree.heading("Price", text="Price")
-        bill_tree.heading("Total", text="Total")
-        
-        bill_tree.column("Product", width=250)
-        bill_tree.column("Qty", width=80)
-        bill_tree.column("Price", width=100)
-        bill_tree.column("Total", width=100)
-        
-        # Add items to bill
-        subtotal = 0
+        # Update inventory
         for item in self.cart:
-            bill_tree.insert("", "end", values=(
-                item["name"],
-                f"{item['quantity']:.2f}",
-                f"₹{item['price']:.2f}",
-                f"₹{item['total']:.2f}"
-            ))
-            subtotal += item["total"]
+            product_id = item["id"]
+            if product_id in self.parent.products:
+                self.parent.products[product_id]["quantity"] -= item["quantity"]
         
-        bill_tree.pack(fill=tk.BOTH, expand=True)
+        # Add to sales history
+        self.parent.sales.append(sale)
+        self.current_sale_id += 1
         
-        # Bill summary
-        summary_frame = tk.Frame(bill_frame, bg=COLORS["card"], pady=10)
-        summary_frame.pack(fill=tk.X)
+        # Save data
+        self.parent.save_data()
         
-        tax = subtotal * 0.10
-        total = subtotal + tax
+        messagebox.showinfo("Success", f"Payment processed successfully!\nTotal: ₹{total_amount:.2f}")
         
-        tk.Label(summary_frame, text=f"Subtotal: ₹{subtotal:.2f}", 
-                font=("Arial", 12), fg=COLORS["text"], bg=COLORS["card"]).pack(anchor=tk.W)
-        tk.Label(summary_frame, text=f"Tax (10%): ₹{tax:.2f}", 
-                font=("Arial", 12), fg=COLORS["text"], bg=COLORS["card"]).pack(anchor=tk.W)
-        tk.Label(summary_frame, text=f"Total: ₹{total:.2f}", 
-                font=("Arial", 16, "bold"), fg=COLORS["success"], bg=COLORS["card"]).pack(anchor=tk.W)
-        
-        # Payment section
-        payment_frame = tk.Frame(bill_frame, bg=COLORS["bg"])
-        payment_frame.pack(fill=tk.X, pady=10)
-        
-        tk.Label(payment_frame, text="Payment Details:", 
-                font=("Arial", 14, "bold"), fg=COLORS["text"], bg=COLORS["bg"]).pack(anchor=tk.W)
-        
-        amount_paid = simpledialog.askfloat("Payment", f"Total Amount: ₹{total:.2f}\nEnter amount paid:")
-        
-        if amount_paid is not None:
-            if amount_paid >= total:
-                change = amount_paid - total
-                
-                # Create sale record
-                sale = {
-                    "id": self.current_sale_id,
-                    "date": datetime.now(),
-                    "items": self.cart.copy(),
-                    "subtotal": subtotal,
-                    "tax": tax,
-                    "total": total,
-                    "amount_paid": amount_paid,
-                    "change": change
-                }
-                
-                # Update inventory
-                for item in self.cart:
-                    product_id = item["id"]
-                    if product_id in self.parent.products:
-                        self.parent.products[product_id]["quantity"] -= item["quantity"]
-                
-                # Add to sales history
-                self.parent.sales.append(sale)
-                self.current_sale_id += 1
-                
-                # Save data
-                self.parent.save_data()
-                
-                # Show payment success
-                payment_success = tk.Frame(bill_frame, bg=COLORS["success"], pady=10)
-                payment_success.pack(fill=tk.X)
-                
-                tk.Label(payment_success, text=f"Payment Successful!", 
-                        font=("Arial", 16, "bold"), fg=COLORS["text"], bg=COLORS["success"]).pack()
-                tk.Label(payment_success, text=f"Amount Paid: ₹{amount_paid:.2f}", 
-                        font=("Arial", 14), fg=COLORS["text"], bg=COLORS["success"]).pack()
-                tk.Label(payment_success, text=f"Change: ₹{change:.2f}", 
-                        font=("Arial", 14), fg=COLORS["text"], bg=COLORS["success"]).pack()
-                tk.Label(payment_success, text="Thank you for your business!", 
-                        font=("Arial", 12), fg=COLORS["text"], bg=COLORS["success"]).pack()
-                
-                # Clear cart
-                self.cart = []
-                self.update_cart_display()
-                self.load_products()
-                self.parent.update_dashboard()
-                
-            else:
-                messagebox.showerror("Error", "Insufficient payment amount!")
+        # Clear cart and update displays
+        self.clear_cart()
+        self.load_products()
+        self.parent.update_dashboard()
 
 class InventoryWindow:
     def __init__(self, parent):
@@ -1078,11 +957,8 @@ class InventoryWindow:
         tk.Label(header_frame, text="Inventory Management", 
                 font=("Arial", 24, "bold"), fg=COLORS["text"], bg=COLORS["bg"]).pack(side=tk.LEFT)
         
-        # Action buttons
-        button_frame = tk.Frame(header_frame, bg=COLORS["bg"])
-        button_frame.pack(side=tk.RIGHT)
-        
-        self.add_btn = tk.Button(button_frame, text="Add Product", 
+        # Add product button
+        self.add_btn = tk.Button(header_frame, text="Add Product", 
                                 font=("Arial", 12, "bold"), 
                                 bg=COLORS["success"], 
                                 fg=COLORS["text"],
@@ -1091,9 +967,10 @@ class InventoryWindow:
                                 pady=8,
                                 padx=20,
                                 command=self.add_product)
-        self.add_btn.pack(side=tk.LEFT, padx=(10, 0))
+        self.add_btn.pack(side=tk.RIGHT, padx=(10, 0))
         
-        self.edit_btn = tk.Button(button_frame, text="Edit Product", 
+        # Edit product button
+        self.edit_btn = tk.Button(header_frame, text="Edit Product", 
                                  font=("Arial", 12, "bold"), 
                                  bg=COLORS["primary"], 
                                  fg=COLORS["text"],
@@ -1102,9 +979,10 @@ class InventoryWindow:
                                  pady=8,
                                  padx=20,
                                  command=self.edit_product)
-        self.edit_btn.pack(side=tk.LEFT, padx=(10, 0))
+        self.edit_btn.pack(side=tk.RIGHT, padx=(10, 0))
         
-        self.delete_btn = tk.Button(button_frame, text="Delete Product", 
+        # Delete product button
+        self.delete_btn = tk.Button(header_frame, text="Delete Product", 
                                    font=("Arial", 12, "bold"), 
                                    bg=COLORS["error"], 
                                    fg=COLORS["text"],
@@ -1113,21 +991,7 @@ class InventoryWindow:
                                    pady=8,
                                    padx=20,
                                    command=self.delete_product)
-        self.delete_btn.pack(side=tk.LEFT, padx=(10, 0))
-        
-        # Search frame
-        search_frame = tk.Frame(main_frame, bg=COLORS["bg"])
-        search_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        tk.Label(search_frame, text="Search Products:", font=("Arial", 12, "bold"), 
-                fg=COLORS["text"], bg=COLORS["bg"]).pack(anchor=tk.W)
-        
-        self.search_var = tk.StringVar()
-        self.search_entry = tk.Entry(search_frame, textvariable=self.search_var, 
-                                    font=("Arial", 14), bg=COLORS["input"], fg=COLORS["text"],
-                                    relief=tk.FLAT, bd=0)
-        self.search_entry.pack(fill=tk.X, pady=(5, 0), ipady=8)
-        self.search_entry.bind("<KeyRelease>", self.search_products)
+        self.delete_btn.pack(side=tk.RIGHT, padx=(10, 0))
         
         # Inventory table
         table_frame = tk.Frame(main_frame, bg=COLORS["bg"])
@@ -1174,26 +1038,8 @@ class InventoryWindow:
                 product.get("category", "Uncategorized")
             ))
     
-    def search_products(self, event=None):
-        query = self.search_var.get().lower()
-        
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        
-        for product_id, product in self.parent.products.items():
-            if (query in product["name"].lower() or 
-                query in str(product_id) or 
-                query in product.get("category", "").lower()):
-                self.tree.insert("", "end", values=(
-                    product_id,
-                    product["name"],
-                    f"₹{product['price']:.2f}",
-                    product["quantity"],
-                    product.get("category", "Uncategorized")
-                ))
-    
     def add_product(self):
-        dialog = ProductDialog(self.window)
+        dialog = AddProductDialog(self.window)
         self.window.wait_window(dialog.dialog)
         
         if dialog.result:
@@ -1202,7 +1048,6 @@ class InventoryWindow:
             self.parent.save_data()
             self.load_inventory()
             self.parent.update_dashboard()
-            messagebox.showinfo("Success", "Product added successfully!")
     
     def edit_product(self):
         selected = self.tree.selection()
@@ -1214,14 +1059,13 @@ class InventoryWindow:
         product_id = item["values"][0]
         product = self.parent.products[product_id]
         
-        dialog = ProductDialog(self.window, product)
+        dialog = AddProductDialog(self.window, product)
         self.window.wait_window(dialog.dialog)
         
         if dialog.result:
             self.parent.products[product_id] = dialog.result
             self.parent.save_data()
             self.load_inventory()
-            messagebox.showinfo("Success", "Product updated successfully!")
     
     def delete_product(self):
         selected = self.tree.selection()
@@ -1238,9 +1082,8 @@ class InventoryWindow:
             self.parent.save_data()
             self.load_inventory()
             self.parent.update_dashboard()
-            messagebox.showinfo("Success", "Product deleted successfully!")
 
-class ProductDialog:
+class AddProductDialog:
     def __init__(self, parent, product=None):
         self.parent = parent
         self.product = product
@@ -1248,7 +1091,7 @@ class ProductDialog:
         
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Add Product" if not product else "Edit Product")
-        self.dialog.geometry("400x500")
+        self.dialog.geometry("400x400")
         self.dialog.configure(bg=COLORS["bg"])
         self.dialog.resizable(False, False)
         self.dialog.transient(parent)
@@ -1310,15 +1153,15 @@ class ProductDialog:
         button_frame = tk.Frame(main_frame, bg=COLORS["bg"])
         button_frame.pack(fill=tk.X)
         
-        self.submit_btn = tk.Button(button_frame, text="Submit", 
-                                   font=("Arial", 14, "bold"), 
-                                   bg=COLORS["success"], 
-                                   fg=COLORS["text"],
-                                   relief=tk.FLAT,
-                                   bd=0,
-                                   pady=10,
-                                   command=self.submit)
-        self.submit_btn.pack(side=tk.RIGHT, padx=(10, 0))
+        self.save_btn = tk.Button(button_frame, text="Save", 
+                                 font=("Arial", 14, "bold"), 
+                                 bg=COLORS["success"], 
+                                 fg=COLORS["text"],
+                                 relief=tk.FLAT,
+                                 bd=0,
+                                 pady=10,
+                                 command=self.save)
+        self.save_btn.pack(side=tk.RIGHT, padx=(10, 0))
         
         self.cancel_btn = tk.Button(button_frame, text="Cancel", 
                                    font=("Arial", 14), 
@@ -1330,11 +1173,11 @@ class ProductDialog:
                                    command=self.cancel)
         self.cancel_btn.pack(side=tk.RIGHT)
     
-    def submit(self):
+    def save(self):
         try:
             name = self.name_var.get().strip()
             price = float(self.price_var.get())
-            quantity = float(self.quantity_var.get())
+            quantity = int(self.quantity_var.get())
             category = self.category_var.get().strip()
             
             if not name:
